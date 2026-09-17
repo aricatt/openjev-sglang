@@ -3,6 +3,8 @@
 A server implementing the [TypeSafe/Jev HTTP API](https://docs.typesafe.ai/api)
 with **Qwen3.6-35B-A3B on SGLang**.
 
+![](https://i.imgur.com/wHM3jxV.gif)
+
 Each container one B200 with SGLang **0.5.19's Rust frontend**,
 radix caching, and **breakable prefill CUDA graphs**. A separate Python API process
 uses FastAPI, uvloop, the Rust-backed HF tokenizer, and pooled asynchronous HTTP
