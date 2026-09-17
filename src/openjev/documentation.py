@@ -16,6 +16,7 @@ TAGS = [
 INTRODUCTION = (
     "Jev-compatible API endpoints, built on SGLang radix tree prefix reuse "
     "and parallel requests to open-weight models."
+    "\n\n[Source code on GitHub](https://github.com/ekzhang/openjev-sglang)"
 )
 
 SYSTEMONE_DESCRIPTION = """Evaluate **1–64 independent questions** against one shared `state`.
