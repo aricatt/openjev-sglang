@@ -5,11 +5,11 @@ These are standalone uv scripts: their dependencies stay separate from the API's
 environment. No server redeployment is needed to run an evaluation.
 
 ```sh
-# OpenJev: two concurrent requests, with a short pause per worker.
-uv run evals/boolq.py
+# OpenJev: 16 concurrent requests, with a short pause per worker.
+uv run evals/boolq.py --concurrency 16
 
 # Real Jev: reads ~/.openrouter-api-key locally; sends it only to OpenRouter.
-uv run evals/boolq.py --provider jev --output evals/runs/boolq-jev
+uv run evals/boolq.py --provider jev --concurrency 16 --output evals/runs/boolq-jev
 
 # Paired report, PNG and PDF plots, and machine-readable metrics.
 uv run evals/report_boolq.py --jev evals/runs/boolq-jev
@@ -24,6 +24,9 @@ protocol. Transient network and capacity errors receive bounded retries; a
 permanent failure stops the run. The report requires all rows, so failed requests
 cannot silently disappear from the denominator. `--limit 5 --output
 evals/runs/pilot` runs a small pilot. `--concurrency 1` reduces load further.
+The default concurrency is 2; up to 64 is configurable. Concurrency can change
+when resuming a run; `execution.jsonl` records each segment's settings and starting
+row count, while the manifest preserves the original run settings.
 
 The source is [Google's BoolQ](https://github.com/google-research-datasets/boolean-questions),
 mirrored at `google/boolq` on Hugging Face, pinned to revision

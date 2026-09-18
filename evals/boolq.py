@@ -76,7 +76,11 @@ async def collect(args):
     manifest_path = args.output / "manifest.json"
     if manifest_path.exists():
         old = json.loads(manifest_path.read_text())
-        if any(old.get(k) != v for k, v in manifest.items()):
+        if any(
+            old.get(k) != v
+            for k, v in manifest.items()
+            if k not in {"concurrency", "delay_per_worker_seconds"}
+        ):
             raise ValueError("Existing run has different parameters; use a new output directory")
     else:
         manifest_path.write_text(
@@ -95,6 +99,18 @@ async def collect(args):
         if i not in done:
             queue.put_nowait((i, row))
     print(f"Dataset: {len(rows)} rows; resuming with {len(done)} completed", flush=True)
+    with (args.output / "execution.jsonl").open("a") as events:
+        events.write(
+            json.dumps(
+                {
+                    "started_at": datetime.now(UTC).isoformat(),
+                    "concurrency": args.concurrency,
+                    "delay_per_worker_seconds": args.delay,
+                    "resumed_rows": len(done),
+                }
+            )
+            + "\n"
+        )
     started = time.monotonic()
     headers = {"Modal-Session-ID": "openjev-boolq-eval"}
     if is_jev:
@@ -178,7 +194,7 @@ if __name__ == "__main__":
     parser.add_argument("--url", default=DEFAULT_URL)
     parser.add_argument("--provider", choices=["openjev", "jev"], default="openjev")
     parser.add_argument("--output", type=Path, default=Path("evals/runs/boolq"))
-    parser.add_argument("--concurrency", type=int, default=2, choices=range(1, 5))
+    parser.add_argument("--concurrency", type=int, default=2, choices=range(1, 65))
     parser.add_argument("--delay", type=float, default=0.1)
     parser.add_argument("--limit", type=int, default=0, help="Pilot only; 0 means all 3270 rows")
     asyncio.run(collect(parser.parse_args()))

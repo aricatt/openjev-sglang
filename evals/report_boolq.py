@@ -28,6 +28,12 @@ SCALARS = [
 
 def load_run(path):
     manifest = json.loads((path / "manifest.json").read_text())
+    execution = path / "execution.jsonl"
+    manifest["execution"] = (
+        [json.loads(line) for line in execution.read_text().splitlines()]
+        if execution.exists()
+        else []
+    )
     rows = [json.loads(line) for line in (path / "predictions.jsonl").read_text().splitlines()]
     rows.sort(key=lambda row: row["index"])
     if [row["index"] for row in rows] != list(range(manifest["count"])):
@@ -129,7 +135,7 @@ def chart(models, target, n):
             )
         bins = m["positive_reliability"]
         axes[1, 0].bar(
-            np.arange(10) + (k - 0.5) * 0.36,
+            np.arange(10) + (k - (len(models) - 1) / 2) * 0.36,
             [b["count"] for b in bins],
             width=0.36,
             color=colors[k],
@@ -138,7 +144,11 @@ def chart(models, target, n):
         confident = m["high_certainty"]
         values = [100 * b["errors"] / b["count"] if b["count"] else 0 for b in confident]
         bars = axes[1, 1].bar(
-            np.arange(3) + (k - 0.5) * 0.36, values, width=0.36, color=colors[k], label=name
+            np.arange(3) + (k - (len(models) - 1) / 2) * 0.36,
+            values,
+            width=0.36,
+            color=colors[k],
+            label=name,
         )
         for bar, b in zip(bars, confident, strict=True):
             axes[1, 1].annotate(
@@ -163,7 +173,7 @@ def chart(models, target, n):
     axes[1, 0].set(
         title="Where the predictions fall",
         ylabel="Examples",
-        xlabel="P(yes) bin",
+        xlabel="P(yes) bin (width 0.1)",
         xticks=np.arange(10),
         xticklabels=[f"{i / 10:.1f}" for i in range(10)],
     )
@@ -208,6 +218,12 @@ def main(args):
             "metrics": metrics,
             "bootstrap_95": interval,
             "requests_with_retries": sum(r["attempts"] > 1 for r in rows),
+            "response_model_ids": sorted({r["model"] for r in rows}),
+            "reported_cost_usd": (
+                sum(r["usage"]["cost"] for r in rows)
+                if all(r.get("usage") and "cost" in r["usage"] for r in rows)
+                else None
+            ),
         }
     args.output.mkdir(parents=True, exist_ok=True)
     report = {
@@ -290,6 +306,17 @@ def main(args):
         "- Completion is required: the report refuses missing or duplicate predictions.",
         "- BoolQ is released under CC BY-SA 3.0. Raw dataset text is not checked into this repo.",
     ]
+    for name, model in models.items():
+        lines.append(
+            f"- {name}: response model IDs "
+            f"{', '.join(model['response_model_ids'])}; "
+            f"{model['requests_with_retries']} requests needed retries."
+        )
+        if model["reported_cost_usd"] is not None:
+            lines.append(
+                f"- {name}: reported cost for successful responses "
+                f"${model['reported_cost_usd']:.4f} (excludes pilot and failed attempts)."
+            )
     (args.output / "report.md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines[:15]))
     print(f"Report: {args.output / 'report.md'}")
