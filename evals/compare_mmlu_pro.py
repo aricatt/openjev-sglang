@@ -17,7 +17,6 @@ from matplotlib.patches import Rectangle
 
 BLUE = "#2671bd"
 ORANGE = "#cb583e"
-GRAY = "#858b93"
 
 
 def load(path):
@@ -156,8 +155,9 @@ def main(args):
     subject_ax.tick_params(axis="y", length=0, pad=10)
 
     names = ["Jev", "OpenJev"] + (["OpenJev before"] if args.previous else [])
-    colors = [ORANGE, BLUE, GRAY]
-    for i, name in enumerate(names):
+    chart_names = ["Jev", "OpenJev"]
+    colors = [ORANGE, BLUE]
+    for i, name in enumerate(chart_names):
         data = overall[name]
         value = data["accuracy"] * 100
         low, high = np.array(data["wilson_95"]) * 100
@@ -173,14 +173,14 @@ def main(args):
         )
         overall_ax.text(high + 1.5, i, f"{value:.1f}%", va="center", fontsize=11, color=colors[i])
     overall_ax.set(
-        yticks=range(len(names)),
-        yticklabels=names,
-        ylim=(len(names) - 0.5, -0.5),
+        yticks=range(len(chart_names)),
+        yticklabels=chart_names,
+        ylim=(len(chart_names) - 0.5, -0.5),
         xlim=(40, 100),
         xticks=[40, 60, 80, 100],
         xlabel="Accuracy (%) · 95% Wilson intervals",
     )
-    overall_ax.set_title("Overall and the prompt change", loc="left", pad=16, fontweight="bold")
+    overall_ax.set_title("Overall accuracy", loc="left", pad=16, fontweight="bold")
     overall_ax.spines["left"].set_visible(False)
     overall_ax.tick_params(axis="y", length=0)
     overall_ax.grid(axis="x", alpha=0.17)
