@@ -142,3 +142,29 @@ bootstrap intervals, p50/p95 latency, tokens used, and natural completion counts
 This is an exploratory latency/accuracy comparison, not a reproduction of Qwen's
 published benchmark or a calibration evaluation. Requests are not retried; any
 missing result prevents a final report. Use a fresh output directory on rerun.
+
+## Hosted one-token MMLU-Pro
+
+```sh
+uv run evals/mmlu_pro_openrouter.py
+```
+
+This evaluates Qwen3.8-27B through OpenRouter, pinned to Parasail at concurrency 16,
+using the exact earlier 1,000-question sample and the key in
+`~/.openrouter-api-key`. It needs the saved baseline manifests/predictions and the
+cached test parquet. Requests disable reasoning and cap generation at one token;
+responses must explicitly report one output token and zero reasoning tokens.
+The plain zero-shot prompt and request settings are recorded in the manifest.
+
+Predictions use the highest-logprob exact uppercase answer letter in the top-20
+list. If any answer letter appears, its ranking over all other answer letters is
+known, including letters outside the top-20. If none appears, the question is
+marked unresolved and counted wrong. No omitted probability is assumed zero, and
+no calibration metrics are computed from this truncated distribution.
+
+The run resumes from saved responses; only transient request failures are retried.
+The report checks matching dataset hashes, question IDs/indices, gold labels and
+subjects, then compares accuracy and paired bootstrap differences against Jev and
+OpenJev. Their prompt wrappers and serving backends differ, so this is a service
+comparison, not an isolated model ablation. Raw responses stay in the ignored run
+directory; summary metrics and plots go in `evals/results/qwen38-27b/`.
