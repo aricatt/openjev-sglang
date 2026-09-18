@@ -54,3 +54,23 @@ public benchmark overlap with model training is unknown.
 Every run records the dataset byte hash, source revision, exact prompt, provider,
 requested model ID, response model IDs, usage, retries and request IDs. API key
 contents are never written to the results.
+
+## Saved results
+
+- [BoolQ: OpenJev versus Jev](results/boolq-2026-09-18/comparison/report.md), with
+  [PNG](results/boolq-2026-09-18/comparison/calibration.png) and
+  [PDF](results/boolq-2026-09-18/comparison/calibration.pdf) calibration plots.
+- [Jev: 1,000 random MMLU-Pro questions](results/mmlu-pro-2026-09-18/report.md).
+
+## MMLU-Pro subset
+
+```sh
+uv run evals/mmlu_pro.py --count 1000 --seed 42 --concurrency 16
+```
+
+This standalone script samples test questions uniformly without replacement and
+uses Jev's `choice` endpoint with zero-shot direct answers. It reports exact-match
+accuracy, an approximate Wilson interval, and subject breakdowns. It is not a
+reproduction of the usual five-shot chain-of-thought benchmark protocol. The
+manifest records the pinned dataset revision, byte hash and all sampled indices.
+Predictions resume on rerun; incomplete runs cannot produce a final report.
