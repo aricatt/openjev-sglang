@@ -88,3 +88,31 @@ The comparison script verifies matching questions and payload settings, then
 produces a subject dot plot, overall Wilson intervals, a paired outcome grid,
 and paired bootstrap intervals for score differences. Its default inputs are the
 saved Jev run, the original OpenJev run, and the new prompt run shown above.
+
+## One-token prompt research
+
+[Research findings and results](results/mmlu-pro-research-2026-09-18/report.md)
+include the five prompt variants, a KV-cache audit, and a proposed bounded-reasoning
+experiment.
+
+`prompt_probe.py` compares the deployed prompt, a plain MCQ, a JSON answer prefix,
+five validation examples with direct answers, and five validation examples with
+rationales. Every test answer still uses exactly one generated token with thinking
+disabled. This diagnostic calls the internal SGLang endpoint through an existing
+Modal container; it does not change the deployment or expose a new endpoint.
+
+```sh
+# First cache test data using mmlu_pro.py. Also download the validation split:
+curl -L --fail -o evals/data/mmlu-pro-validation.parquet \
+  https://huggingface.co/datasets/TIGER-Lab/MMLU-Pro/resolve/b189ec765aa7ed75c8acfea42df31fdae71f97be/data/validation-00000-of-00001.parquet
+uv run modal container list
+uv run evals/prompt_probe.py --container ta-... --output evals/runs/prompt-research
+```
+
+The default 256 questions exclude the earlier 1,000-question sample. This is an
+exploratory comparison, not a new headline benchmark: any selected improvement
+needs confirmation on untouched questions. Test gold answers remain local; only
+the official validation examples supply demonstration answers. The script records
+all five variants and paired bootstrap intervals, and fails if any result is missing.
+Use a new output directory for each run. Raw output is streamed into `remote.log`;
+this bounded diagnostic does not resume or retry failed requests.
