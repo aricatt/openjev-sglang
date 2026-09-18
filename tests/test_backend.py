@@ -58,7 +58,7 @@ async def test_failed_branch_cancels_siblings(compiler, payload):
         if request.url.path == "/abort_request":
             aborted.append(data["rid"])
             return httpx.Response(200)
-        if data.get("token_ids_logprob"):
+        if data.get("token_ids_logprob") != [0]:
             count += 1
             if count == 1:
                 await branches_started.wait()
@@ -111,3 +111,37 @@ async def test_global_branch_concurrency_limit():
         backend = SGLangClient(Settings(max_concurrent_branches=2), client)
         await asyncio.gather(*(backend.generate([1, 2]) for _ in range(8)))
     assert maximum == 2
+
+
+async def test_warmup_and_scoring_can_share_a_selected_logprob_batch():
+    requests = []
+
+    async def handler(request):
+        data = json.loads(request.content)
+        requests.append(data)
+        assert data["return_logprob"] is True
+        assert data["token_ids_logprob"]
+        assert data["sampling_params"]["max_new_tokens"] == 1
+        return httpx.Response(
+            200,
+            json={
+                "meta_info": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 1,
+                    "output_token_ids_logprobs": [
+                        [[-1.0, token_id] for token_id in data["token_ids_logprob"]]
+                    ],
+                }
+            },
+        )
+
+    async with httpx.AsyncClient(
+        base_url="http://sglang", transport=httpx.MockTransport(handler)
+    ) as client:
+        backend = SGLangClient(Settings(), client)
+        warmup, answer = await asyncio.gather(
+            backend.generate([1, 2]), backend.generate([1, 2, 3], [16, 17])
+        )
+    assert warmup.logprobs == []
+    assert answer.logprobs == [-1.0, -1.0]
+    assert requests[1]["token_ids_logprob"] == [16, 17]

@@ -49,15 +49,15 @@ class SGLangClient:
                 "ignore_eos": True,
             },
             "stream": False,
-            "return_logprob": label_ids is not None,
+            # SGLang 0.5.19 crashes when selected-logprob and plain requests
+            # share a batch (sgl-project/sglang#34719). Warmups request one
+            # unused token's probability so every request takes the same path.
+            "return_logprob": True,
+            "token_ids_logprob": label_ids or [0],
+            "logprob_start_len": -1,
+            "top_logprobs_num": 0,
+            "return_text_in_logprobs": False,
         }
-        if label_ids is not None:
-            payload.update(
-                token_ids_logprob=label_ids,
-                logprob_start_len=-1,
-                top_logprobs_num=0,
-                return_text_in_logprobs=False,
-            )
         async with self.slots:
             try:
                 response = await self.client.post(

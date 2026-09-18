@@ -34,6 +34,10 @@ If SGLang exits unexpectedly, the API exits too. The Modal launcher watches the
 API and exits the container so Modal can replace it, rather than leaving a live
 HTTP process with a dead inference backend. Normal shutdown disarms both watchers.
 
+Cache warmups also request one unused token probability to avoid SGLang's
+[mixed-logprob batch crash](https://github.com/sgl-project/sglang/issues/34719).
+This keeps warmups and scoring requests batch-compatible without patching SGLang.
+
 The first build imports a large SGLang image. The first GPU start also downloads
 weights and compiles/captures kernels. Model weights persist in the
 `openjev-huggingface` Modal Volume, alongside SGLang's tuning cache and Triton

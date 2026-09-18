@@ -76,7 +76,8 @@ async def api(compiler):
         calls.append(data)
         assert data["sampling_params"]["max_new_tokens"] == 1
         labels = data.get("token_ids_logprob")
-        if labels:
+        is_warmup = labels == [0]
+        if not is_warmup:
             assert warmed, "A branch ran before the prefix barrier"
         else:
             await asyncio.sleep(0.005)
@@ -84,7 +85,7 @@ async def api(compiler):
         meta = {
             "prompt_tokens": len(data["input_ids"]),
             "completion_tokens": 1,
-            "cached_tokens": 100 if labels else 0,
+            "cached_tokens": 0 if is_warmup else 100,
         }
         if labels:
             # Return reordered entries, so correctness depends on IDs, not tuple order.
