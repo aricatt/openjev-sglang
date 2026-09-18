@@ -130,6 +130,10 @@ localhost and aren't forwarded publicly.
    `P(yes)`, Choice returns the argmax and full distribution, and Score returns
    `sum(level_index * probability)` with zero-based levels and a legend.
 
+Options are rendered as `A: description`, `B: description`, etc., without JSON
+wrappers or user-supplied option keys. Choice keys identify response fields only;
+each Choice option requires a nonempty description (`null` is rejected).
+
 This is a prefill plus first-token-readout workload: there is no generated chain
 of thought and no autoregressive continuation after the first token. There are
 **N+1 one-token calls for N questions**, including the cache-warming call.

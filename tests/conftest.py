@@ -51,7 +51,7 @@ def payload():
             "team": {
                 "type": "choice",
                 "instructions": "Team?",
-                "criteria": {"billing": "Payments", "technical": None},
+                "criteria": {"billing": "Payments", "technical": "Software"},
             },
             "level": {
                 "type": "score",

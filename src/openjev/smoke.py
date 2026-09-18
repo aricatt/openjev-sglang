@@ -49,8 +49,11 @@ async def smoke_test(url: str, timeout: float = 1200) -> dict:
                 },
                 "many": {
                     "type": "choice",
-                    "instructions": "Select the option named target.",
-                    "criteria": {**{f"other-{i}": None for i in range(63)}, "target": None},
+                    "instructions": "Select the description saying this is the target.",
+                    "criteria": {
+                        **{f"other-{i}": "Not the target" for i in range(63)},
+                        "target": "This is the target",
+                    },
                 },
             },
         }
@@ -81,7 +84,7 @@ async def smoke_test(url: str, timeout: float = 1200) -> dict:
                     "too_many": {
                         "type": "choice",
                         "instructions": "pick",
-                        "criteria": {str(i): None for i in range(65)},
+                        "criteria": {str(i): f"Option {i}" for i in range(65)},
                     }
                 },
             },

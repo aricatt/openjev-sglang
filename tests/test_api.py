@@ -55,7 +55,7 @@ async def test_answer_limits(api, count, status):
                 "q": {
                     "type": "choice",
                     "instructions": "pick",
-                    "criteria": {str(i): None for i in range(count)},
+                    "criteria": {str(i): f"Option {i}" for i in range(count)},
                 },
             },
         },
@@ -82,6 +82,15 @@ async def test_answer_limits(api, count, status):
 async def test_invalid_requests_do_not_hit_gpu(api, payload, change):
     client, calls, _ = api
     response = await client.post("/v1/systemone", json=payload | change)
+    assert response.status_code == 422
+    assert not calls
+
+
+@pytest.mark.parametrize("description", [None, ""])
+async def test_choice_requires_descriptions_before_gpu_work(api, payload, description):
+    client, calls, _ = api
+    payload["questions"]["team"]["criteria"]["technical"] = description
+    response = await client.post("/v1/systemone", json=payload)
     assert response.status_code == 422
     assert not calls
 

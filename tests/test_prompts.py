@@ -44,6 +44,30 @@ def test_question_ids_do_not_enter_the_model(compiler, payload):
     )
 
 
+def test_option_keys_do_not_enter_prompt_or_change_tokens(compiler, payload):
+    payload["questions"] = {
+        "team": {
+            "type": "choice",
+            "instructions": "Which team?",
+            "criteria": {"secret-billing-key": "Payments", "secret-support-key": "Software\nBugs"},
+        }
+    }
+    original = compiler.prepare(SystemOneRequest.model_validate(payload)).branches[0]
+    prompt = compiler.tokenizer.decode(original.input_ids)
+    assert "A: Payments\nB: Software\n   Bugs" in prompt
+    assert "secret-" not in prompt
+    assert '"option"' not in prompt
+    assert '"description"' not in prompt
+    payload["questions"]["team"]["criteria"] = {
+        "other-key": "Payments",
+        "renamed": "Software\nBugs",
+    }
+    renamed = compiler.prepare(SystemOneRequest.model_validate(payload)).branches[0]
+    assert original.input_ids == renamed.input_ids
+    assert original.option_keys == ["secret-billing-key", "secret-support-key"]
+    assert renamed.option_keys == ["other-key", "renamed"]
+
+
 @pytest.mark.parametrize("content", [[{"type": "image_url", "image_url": "http://x"}], 12])
 def test_non_text_chat_is_rejected(content):
     with pytest.raises(ValueError):

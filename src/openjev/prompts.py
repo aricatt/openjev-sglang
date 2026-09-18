@@ -46,7 +46,7 @@ def state_messages(state: Content) -> list[dict[str, Any]]:
     return [{"role": "user", "content": serialize(state)}]
 
 
-def options(question: Question) -> list[tuple[str, str | None]]:
+def options(question: Question) -> list[tuple[str, str]]:
     if isinstance(question, NoulQuestion):
         return [("true", question.criteria.yes), ("false", question.criteria.no)]
     if isinstance(question, ChoiceQuestion):
@@ -121,10 +121,11 @@ class PromptCompiler:
             choices = options(question)
             labels = self.labels[: len(choices)]
             lines = [f"Question: {serialize(question.instructions)}", "", "Options:"]
-            for (option, description), (label, _) in zip(choices, labels, strict=True):
-                # Quoting keeps arbitrary user option names and multiline rubrics unambiguous.
-                entry = {"option": option, "description": description}
-                lines.append(f"{label}: {orjson.dumps(entry).decode()}")
+            for (_, description), (label, _) in zip(choices, labels, strict=True):
+                # User keys identify response fields only; they must not bias the model.
+                # Indent multiline descriptions to keep each generated label distinct.
+                text = description.replace("\n", "\n   ")
+                lines.append(f"{label}: {text}")
             suffix = "\n".join(lines) + ending + "Answer:\n"
             # The prefix ends with two newlines and suffix starts with 'Question:'.
             # This is a stable tokenization boundary for the supported Qwen template.

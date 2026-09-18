@@ -27,12 +27,12 @@ class NoulQuestion(StrictModel):
 class ChoiceQuestion(StrictModel):
     type: Literal["choice"]
     instructions: Content = Field(description="Question or instructions for choosing one option.")
-    criteria: dict[str, str | None] = Field(
+    criteria: dict[str, Annotated[str, Field(min_length=1)]] = Field(
         min_length=2,
         max_length=MAX_ANSWERS,
         description=(
-            "Map of 2–64 option names to descriptions. Use null when the name is "
-            "enough. Returned probabilities use these names."
+            "Map of 2–64 option keys to nonempty descriptions. Only descriptions are "
+            "shown to the model; keys identify the returned choice and probabilities."
         ),
     )
 
