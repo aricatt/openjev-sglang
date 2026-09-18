@@ -14,7 +14,9 @@ Evaluated 3,270 labeled development examples. Passage is the state; the yes/no q
 
 Intervals: 95% percentile bootstrap, resampling passages together (2,938 unique passages; 2,000 draws, seed 42). Paired difference intervals are in metrics.json. ECE depends on binning and has finite-sample bias; Brier/log loss also reflect predictive skill, not calibration alone. Brier is mean (P(yes) − label)². Log loss clips true-label probabilities below 1e-15. Ties at 0.5 predict yes.
 
-![Calibration](calibration.png)
+![Calibration](reliability.png)
+
+[Detailed calibration dashboard](calibration.png)
 
 Plot error bars are approximate 95% Wilson intervals within bins; the report's aggregate intervals use passage clustering.
 

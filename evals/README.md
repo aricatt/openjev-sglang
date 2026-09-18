@@ -58,8 +58,8 @@ contents are never written to the results.
 ## Saved results
 
 - [BoolQ: OpenJev versus Jev](results/boolq-2026-09-18/comparison/report.md), with
-  [PNG](results/boolq-2026-09-18/comparison/calibration.png) and
-  [PDF](results/boolq-2026-09-18/comparison/calibration.pdf) calibration plots.
+  [PNG](results/boolq-2026-09-18/comparison/reliability.png) and
+  [PDF](results/boolq-2026-09-18/comparison/reliability.pdf) calibration curves.
 - [Jev: 1,000 random MMLU-Pro questions](results/mmlu-pro-2026-09-18/report.md).
 
 ## MMLU-Pro subset

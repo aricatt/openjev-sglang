@@ -196,6 +196,53 @@ def chart(models, target, n):
     plt.close(fig)
 
 
+def reliability_comparison(models, target, n):
+    """One shared axis for directly comparing the returned boolean probabilities."""
+    fig, ax = plt.subplots(figsize=(8, 7.7))
+    fig.subplots_adjust(left=0.12, right=0.96, top=0.84, bottom=0.17)
+    fig.suptitle("BoolQ calibration: OpenJev vs Jev", fontsize=19, y=0.97)
+    fig.text(
+        0.5,
+        0.92,
+        f"{n:,} shared questions · raw P(yes) · 10 equal-width bins",
+        ha="center",
+        fontsize=11,
+        color="#555555",
+    )
+    ax.plot([0, 1], [0, 1], "--", color="#777777", lw=1.3, label="Perfect calibration")
+    for (name, data), color in zip(models.items(), ["#2671bd", "#cb583e"], strict=True):
+        bins = [b for b in data["metrics"]["positive_reliability"] if b["count"]]
+        x = [b["mean_probability"] for b in bins]
+        y = [b["observed_frequency"] for b in bins]
+        bounds = np.array([wilson(b["observed_frequency"], b["count"]) for b in bins])
+        ax.fill_between(x, bounds[:, 0], bounds[:, 1], color=color, alpha=0.10)
+        ax.plot(x, y, "o-", color=color, lw=2.3, markersize=6, label=name)
+    ax.set(
+        xlim=(0, 1),
+        ylim=(0, 1),
+        xlabel="Predicted probability of Yes (bin average)",
+        ylabel="Fraction actually labeled Yes",
+        xticks=np.linspace(0, 1, 6),
+        yticks=np.linspace(0, 1, 6),
+    )
+    ax.set_aspect("equal", adjustable="box")
+    ax.grid(alpha=0.18)
+    ax.legend(loc="upper left", framealpha=0.96, fontsize=11)
+    fig.text(
+        0.5,
+        0.065,
+        "Closer to the diagonal means better calibration.\n"
+        "Shading: approximate 95% binwise Wilson intervals; sparse bins are less certain.",
+        ha="center",
+        fontsize=10,
+        color="#555555",
+        linespacing=1.6,
+    )
+    fig.savefig(target / "reliability.png", dpi=180)
+    fig.savefig(target / "reliability.pdf")
+    plt.close(fig)
+
+
 def main(args):
     paths = [args.openjev, args.jev] if args.jev else [args.openjev]
     runs = [load_run(p) for p in paths]
@@ -233,6 +280,8 @@ def main(args):
     }
     (args.output / "metrics.json").write_text(json.dumps(report, indent=2) + "\n")
     chart(models, args.output, runs[0][0]["count"])
+    if len(models) == 2:
+        reliability_comparison(models, args.output, runs[0][0]["count"])
     lines = [
         "# BoolQ calibration",
         "",
@@ -273,7 +322,11 @@ def main(args):
         "alone. Brier is mean (P(yes) − label)². Log loss clips true-label probabilities "
         "below 1e-15. Ties at 0.5 predict yes.",
         "",
-        "![Calibration](calibration.png)",
+        "![Calibration](reliability.png)"
+        if len(models) == 2
+        else "![Calibration](calibration.png)",
+        "",
+        "[Detailed calibration dashboard](calibration.png)",
         "",
         "Plot error bars are approximate 95% Wilson intervals within bins; the report's "
         "aggregate intervals use passage clustering.",
