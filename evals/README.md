@@ -116,3 +116,29 @@ the official validation examples supply demonstration answers. The script record
 all five variants and paired bootstrap intervals, and fails if any result is missing.
 Use a new output directory for each run. Raw output is streamed into `remote.log`;
 this bounded diagnostic does not resume or retry failed requests.
+
+## Bounded-reasoning probe
+
+[Saved comparison and latency plot](results/thinking-2026-09-18/report.md).
+
+```sh
+uv run evals/thinking_probe.py --container ta-... --output evals/runs/thinking-128
+uv run evals/report_thinking.py evals/runs/thinking-128 --output evals/results/thinking
+```
+
+This small experiment compares 0, 64, 256, and 1,024 reasoning tokens on 128 new
+questions, excluding both earlier samples. It does not change the production API.
+All budgets use the same plain MCQ and JSON final-answer format. Positive budgets
+enable Qwen's native thinking template, stop at `</think>` or the token cap, then
+append a closed thinking block and score one final answer token. Reasoning uses
+Qwen's recommended general-task sampling settings and a per-question seed.
+Final answers are selected by argmax over the letter logprobs.
+
+Budgets run separately at concurrency 16. Reported latency is measured inside the
+container for reasoning plus the answer call; it excludes the external API path,
+the client-side concurrency queue, and cold startup. Raw generated reasoning is
+saved locally in the ignored run directory. The script records accuracy, paired
+bootstrap intervals, p50/p95 latency, tokens used, and natural completion counts.
+This is an exploratory latency/accuracy comparison, not a reproduction of Qwen's
+published benchmark or a calibration evaluation. Requests are not retried; any
+missing result prevents a final report. Use a fresh output directory on rerun.
