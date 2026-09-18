@@ -62,12 +62,18 @@ contents are never written to the results.
   [PDF](results/boolq-2026-09-18/comparison/reliability.pdf) calibration curves.
 - [Jev: 1,000 random MMLU-Pro questions](results/mmlu-pro-2026-09-18/report.md).
 - [OpenJev: the same MMLU-Pro questions](results/mmlu-pro-2026-09-18/openjev/report.md).
+- [MMLU-Pro comparison after prompt cleanup](results/mmlu-pro-2026-09-18/comparison/report.md):
+  subject accuracy, paired answer outcomes, and the before/after prompt result.
 
 ## MMLU-Pro subset
 
 ```sh
 uv run evals/mmlu_pro.py --count 1000 --seed 42 --concurrency 16
 uv run evals/mmlu_pro.py --provider openjev --count 1000 --seed 42 --concurrency 16
+
+# Preserve the previous run when testing a new deployment.
+uv run evals/mmlu_pro.py --provider openjev --output evals/runs/mmlu-pro-openjev-simple-options
+uv run evals/compare_mmlu_pro.py
 ```
 
 This standalone script samples test questions uniformly without replacement and
@@ -78,3 +84,7 @@ accuracy, an approximate Wilson interval, and subject breakdowns. It is not a
 reproduction of the usual five-shot chain-of-thought benchmark protocol. The
 manifest records the pinned dataset revision, byte hash and all sampled indices.
 Predictions resume on rerun; incomplete runs cannot produce a final report.
+The comparison script verifies matching questions and payload settings, then
+produces a subject dot plot, overall Wilson intervals, a paired outcome grid,
+and paired bootstrap intervals for score differences. Its default inputs are the
+saved Jev run, the original OpenJev run, and the new prompt run shown above.
