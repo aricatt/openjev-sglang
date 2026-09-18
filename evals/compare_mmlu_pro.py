@@ -14,48 +14,18 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Rectangle
+from metrics import paired, wilson
+from run_files import load_run
 
 BLUE = "#2671bd"
 ORANGE = "#cb583e"
-
-
-def load(path):
-    manifest = json.loads((path / "manifest.json").read_text())
-    rows = [json.loads(line) for line in (path / "predictions.jsonl").read_text().splitlines()]
-    rows.sort(key=lambda r: r["index"])
-    if [r["index"] for r in rows] != sorted(manifest["indices"]):
-        raise ValueError(f"Incomplete or duplicate predictions: {path}")
-    return manifest, rows
-
-
-def wilson(correct, n):
-    p = correct / n
-    z = 1.96
-    center = (p + z * z / (2 * n)) / (1 + z * z / n)
-    half = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
-    return [float(center - half), float(center + half)]
-
-
-def paired(left, right):
-    counts = np.bincount(left.astype(int) * 2 + right.astype(int), minlength=4)
-    # Outcome order: both wrong, right only, left only, both correct.
-    draws = np.random.default_rng(42).multinomial(len(left), counts / len(left), size=10000)
-    differences = (draws[:, 1] - draws[:, 2]) / len(left)
-    return {
-        "both_wrong": int(counts[0]),
-        "right_only": int(counts[1]),
-        "left_only": int(counts[2]),
-        "both_correct": int(counts[3]),
-        "right_minus_left": float(right.mean() - left.mean()),
-        "difference_95": np.quantile(differences, [0.025, 0.975]).tolist(),
-    }
 
 
 def main(args):
     paths = {"OpenJev": args.openjev, "Jev": args.jev}
     if args.previous:
         paths["OpenJev before"] = args.previous
-    runs = {name: load(path) for name, path in paths.items()}
+    runs = {name: load_run(path) for name, path in paths.items()}
     reference, rows = runs["OpenJev"]
     for manifest, other in runs.values():
         for key in ["indices", "sha256", "instructions", "state", "criteria", "shots"]:

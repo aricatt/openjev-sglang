@@ -15,6 +15,7 @@ from pathlib import Path
 
 import httpx
 import pyarrow.parquet as pq
+from run_files import load_predictions, save_manifest
 
 REVISION = "35b264d03638db9f4ce671b711558bf7ff0f80d5"
 DATA_URL = (
@@ -73,27 +74,13 @@ async def collect(args):
         "concurrency": args.concurrency,
         "delay_per_worker_seconds": args.delay,
     }
-    manifest_path = args.output / "manifest.json"
-    if manifest_path.exists():
-        old = json.loads(manifest_path.read_text())
-        if any(
-            old.get(k) != v
-            for k, v in manifest.items()
-            if k not in {"concurrency", "delay_per_worker_seconds"}
-        ):
-            raise ValueError("Existing run has different parameters; use a new output directory")
-    else:
-        manifest_path.write_text(
-            json.dumps({**manifest, "started_at": datetime.now(UTC).isoformat()}, indent=2) + "\n"
-        )
+    save_manifest(
+        args.output / "manifest.json",
+        manifest,
+        mutable=("concurrency", "delay_per_worker_seconds"),
+    )
     predictions = args.output / "predictions.jsonl"
-    done = {}
-    if predictions.exists():
-        for line in predictions.read_text().splitlines():
-            record = json.loads(line)
-            if record["index"] in done:
-                raise ValueError("Duplicate prediction index")
-            done[record["index"]] = record
+    done = {r["index"]: r for r in load_predictions(predictions, range(len(rows)))}
     queue = asyncio.Queue()
     for i, row in enumerate(rows):
         if i not in done:
@@ -143,8 +130,6 @@ async def collect(args):
                     for attempt in range(9):
                         try:
                             response = await client.post(route, json=payload(row, model))
-                            if response.status_code in {429, 502, 503, 504, 529}:
-                                response.raise_for_status()
                             response.raise_for_status()
                             data = response.json()
                             p = data["answers"]["answer"]["noul"]

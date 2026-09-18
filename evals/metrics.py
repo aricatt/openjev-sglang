@@ -1,4 +1,4 @@
-"""Binary probability metrics; no model, network, or plotting dependencies."""
+"""Calibration metrics and accuracy intervals; no network or plotting dependencies."""
 
 import math
 
@@ -76,4 +76,31 @@ def binary_metrics(probabilities, labels):
             }
             for threshold in [0.9, 0.95, 0.99]
         ],
+    }
+
+
+def wilson(correct, n, *, z=1.96):
+    return wilson_rate(correct / n, n, z=z)
+
+
+def wilson_rate(p, n, *, z=1.96):
+    center = (p + z * z / (2 * n)) / (1 + z * z / n)
+    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
+    return [float(center - half), float(center + half)]
+
+
+def paired(left, right):
+    import numpy as np
+
+    counts = np.bincount(left.astype(int) * 2 + right.astype(int), minlength=4)
+    # Outcome order: both wrong, right only, left only, both correct.
+    draws = np.random.default_rng(42).multinomial(len(left), counts / len(left), size=10000)
+    differences = (draws[:, 1] - draws[:, 2]) / len(left)
+    return {
+        "both_wrong": int(counts[0]),
+        "right_only": int(counts[1]),
+        "left_only": int(counts[2]),
+        "both_correct": int(counts[3]),
+        "right_minus_left": float(right.mean() - left.mean()),
+        "difference_95": np.quantile(differences, [0.025, 0.975]).tolist(),
     }

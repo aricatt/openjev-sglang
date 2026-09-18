@@ -6,7 +6,6 @@
 
 import argparse
 import json
-import math
 import shutil
 from pathlib import Path
 
@@ -14,14 +13,12 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+from metrics import wilson as wilson_interval
 
 
 def wilson(correct, n):
-    z = 1.959963984540054
-    p = correct / n
-    center = (p + z * z / (2 * n)) / (1 + z * z / n)
-    radius = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
-    return 100 * (center - radius), 100 * (center + radius)
+    # Preserve the original probe's normal quantile and percentage scale.
+    return tuple(100 * x for x in wilson_interval(correct, n, z=1.959963984540054))
 
 
 def main():

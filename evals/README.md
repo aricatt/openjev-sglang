@@ -1,4 +1,25 @@
-# BoolQ calibration evaluation
+# Evaluations
+
+Run commands from the repository root. Each entry point is a standalone uv script;
+its dependencies stay separate from the API environment. Collection writes raw
+data to ignored `data/` and `runs/` directories. Reports read saved runs and write
+Markdown, JSON metrics, and plots without calling a model or reading an API key.
+
+| Evaluation | Collect | Report from saved data |
+|---|---|---|
+| BoolQ calibration | `boolq.py` | `report_boolq.py` |
+| Jev/OpenJev MMLU-Pro | `mmlu_pro.py` | `report_mmlu_pro.py`, `compare_mmlu_pro.py` |
+| Hosted Qwen3.8 MMLU-Pro | `mmlu_pro_openrouter.py` | `report_mmlu_pro_openrouter.py` |
+| Prompt variants in an existing container | `prompt_probe.py` | Metrics written by the probe |
+| Capped reasoning in an existing container | `thinking_probe.py` | `report_thinking.py` |
+
+Every entry point supports `--help`. The MMLU-Pro collectors still generate their
+reports automatically; the separate report commands are useful for offline
+reanalysis. Shared code lives in `run_files.py` (manifests and validated
+predictions), `metrics.py` (statistics), and `modal_probe.py` (local probe launcher).
+Remote probe bodies remain self-contained so they run in the existing deployment.
+
+## BoolQ calibration
 
 Run all 3,270 labeled development examples against OpenJev and optionally real Jev.
 These are standalone uv scripts: their dependencies stay separate from the API's
@@ -64,6 +85,7 @@ contents are never written to the results.
 - [OpenJev: the same MMLU-Pro questions](results/mmlu-pro-2026-09-18/openjev/report.md).
 - [MMLU-Pro comparison after prompt cleanup](results/mmlu-pro-2026-09-18/comparison/report.md):
   subject accuracy, paired answer outcomes, and the before/after prompt result.
+- [Qwen3.8-27B versus OpenJev and Jev](results/qwen38-27b/report.md).
 
 ## MMLU-Pro subset
 
@@ -74,6 +96,9 @@ uv run evals/mmlu_pro.py --provider openjev --count 1000 --seed 42 --concurrency
 # Preserve the previous run when testing a new deployment.
 uv run evals/mmlu_pro.py --provider openjev --output evals/runs/mmlu-pro-openjev-simple-options
 uv run evals/compare_mmlu_pro.py
+
+# Regenerate an individual report without requests or credentials.
+uv run evals/report_mmlu_pro.py evals/runs/mmlu-pro-jev --output evals/runs/jev-report
 ```
 
 This standalone script samples test questions uniformly without replacement and
@@ -147,6 +172,9 @@ missing result prevents a final report. Use a fresh output directory on rerun.
 
 ```sh
 uv run evals/mmlu_pro_openrouter.py
+
+# Regenerate the comparison without requests or credentials.
+uv run evals/report_mmlu_pro_openrouter.py --output evals/results/qwen38-27b
 ```
 
 This evaluates Qwen3.8-27B through OpenRouter, pinned to Parasail at concurrency 16,

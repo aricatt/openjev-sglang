@@ -14,6 +14,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from metrics import binary_metrics
+from metrics import wilson_rate as wilson
+from run_files import load_run as load_complete_run
+from run_files import read_jsonl
 
 SCALARS = [
     "accuracy",
@@ -27,17 +30,8 @@ SCALARS = [
 
 
 def load_run(path):
-    manifest = json.loads((path / "manifest.json").read_text())
-    execution = path / "execution.jsonl"
-    manifest["execution"] = (
-        [json.loads(line) for line in execution.read_text().splitlines()]
-        if execution.exists()
-        else []
-    )
-    rows = [json.loads(line) for line in (path / "predictions.jsonl").read_text().splitlines()]
-    rows.sort(key=lambda row: row["index"])
-    if [row["index"] for row in rows] != list(range(manifest["count"])):
-        raise ValueError(f"Incomplete or duplicate results in {path}")
+    manifest, rows = load_complete_run(path)
+    manifest["execution"] = read_jsonl(path / "execution.jsonl", missing_ok=True)
     return manifest, rows
 
 
@@ -92,13 +86,6 @@ def bootstrap(runs, draws=2000):
         else None
     )
     return intervals, differences, count
-
-
-def wilson(rate, n):
-    z = 1.96
-    middle = (rate + z * z / (2 * n)) / (1 + z * z / n)
-    radius = z * np.sqrt(rate * (1 - rate) / n + z * z / (4 * n * n)) / (1 + z * z / n)
-    return middle - radius, middle + radius
 
 
 def chart(models, target, n):

@@ -154,8 +154,10 @@ async def remote(payload):
 
 
 def local():
+    # Only the local launcher needs sibling modules; remote source stays self-contained.
     import numpy as np
     import pyarrow.parquet as pq
+    from modal_probe import run_remote
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--container", required=True)
@@ -201,38 +203,14 @@ def local():
         "source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
     }
     (args.output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    packed = base64.b64encode(zlib.compress(json.dumps(payload).encode())).decode()
-    command = [
-        "uv",
-        "run",
-        "modal",
-        "container",
-        "exec",
-        "--no-pty",
+    predictions, _ = run_remote(
+        Path(__file__),
         args.container,
-        "--",
-        "/opt/openjev/.venv/bin/python",
-        "-c",
-        Path(__file__).read_text(),
-        "--remote",
-        packed,
-    ]
-    predictions = []
-    with (args.output / "remote.log").open("w") as log:
-        process = subprocess.Popen(
-            command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
-        )
-        for line in process.stdout:
-            log.write(line)
-            log.flush()
-            if "RESULT_JSON " in line:
-                predictions.append(json.loads(line.split("RESULT_JSON ", 1)[1]))
-                if len(predictions) % 128 == 0:
-                    print(
-                        f"Completed {len(predictions)}/{len(indices) * len(VARIANTS)}", flush=True
-                    )
-        if process.wait():
-            raise RuntimeError(f"Remote probe failed; see {args.output / 'remote.log'}")
+        payload,
+        args.output,
+        total=len(indices) * len(VARIANTS),
+        progress_every=128,
+    )
     assert len(predictions) == len(indices) * len(VARIANTS)
     assert len({(r["index"], r["variant"]) for r in predictions}) == len(predictions)
     for result in predictions:

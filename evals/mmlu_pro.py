@@ -8,15 +8,13 @@ import argparse
 import asyncio
 import hashlib
 import json
-import math
 import random
 import time
-from collections import defaultdict
-from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
 import pyarrow.parquet as pq
+from run_files import load_predictions, save_manifest
 
 REVISION = "b189ec765aa7ed75c8acfea42df31fdae71f97be"
 DATA_URL = (
@@ -42,88 +40,6 @@ def payload(row, model=MODEL):
             }
         },
     }
-
-
-def summarize(rows, manifest, output):
-    name = "Jev" if manifest["model"] == MODEL else "OpenJev"
-    if sorted(r["index"] for r in rows) != sorted(manifest["indices"]):
-        raise ValueError("Report requires every sampled question exactly once")
-    n = len(rows)
-    correct = sum(r["prediction"] == r["answer"] for r in rows)
-    accuracy = correct / n
-    z = 1.96
-    center = (accuracy + z * z / (2 * n)) / (1 + z * z / n)
-    radius = z * math.sqrt(accuracy * (1 - accuracy) / n + z * z / (4 * n * n))
-    radius /= 1 + z * z / n
-    groups = defaultdict(list)
-    for r in rows:
-        groups[r["category"]].append(r["prediction"] == r["answer"])
-    result = {
-        "manifest": manifest,
-        "correct": correct,
-        "count": n,
-        "accuracy": accuracy,
-        "wilson_95": [center - radius, center + radius],
-        "response_model_ids": sorted({r["model"] for r in rows}),
-        "reported_cost_usd": (
-            sum(r["usage"]["cost"] for r in rows)
-            if all("cost" in r.get("usage", {}) for r in rows)
-            else None
-        ),
-        "requests_with_retries": sum(r["attempts"] > 1 for r in rows),
-        "subjects": {
-            name: {
-                "correct": sum(values),
-                "count": len(values),
-                "accuracy": sum(values) / len(values),
-            }
-            for name, values in sorted(groups.items())
-        },
-    }
-    output.mkdir(parents=True, exist_ok=True)
-    (output / "metrics.json").write_text(json.dumps(result, indent=2) + "\n")
-    lines = [
-        f"# {name} on a random MMLU-Pro subset",
-        "",
-        f"**{accuracy:.2%} accuracy ({correct:,}/{n:,})**; approximate 95% Wilson interval "
-        f"{center - radius:.2%}–{center + radius:.2%}.",
-        "",
-        f"Sampled {n:,} test questions uniformly without replacement, seed {manifest['seed']}. "
-        "This is a subset estimate, not a full-test score. The interval treats questions as "
-        "independent and does not apply a finite-population correction.",
-        "",
-        f"Zero-shot direct answers through {name}'s `choice` endpoint. "
-        "State contains only the question; criteria map original answer letters to option text. "
-        "No gold answers or provided rationales enter the request. The API's selected choice "
-        "is scored by exact match. No retries based on correctness.",
-        "",
-        "This differs from the benchmark's usual five-shot chain-of-thought setup; "
-        "do not treat it as a reproduction of published leaderboard scores. "
-        "Public benchmark training overlap is unknown.",
-        "",
-        f"Resolved model: {', '.join(result['response_model_ids'])}. "
-        + (
-            f"Successful-response cost: ${result['reported_cost_usd']:.4f}. "
-            if result["reported_cost_usd"] is not None
-            else "API response cost unavailable. "
-        )
-        + f"Saved responses with in-run retries: {result['requests_with_retries']} "
-        "(excludes attempts from interrupted collection segments).",
-        "",
-        "| Subject | Correct | Questions | Accuracy |",
-        "|---|---:|---:|---:|",
-    ]
-    for name, g in result["subjects"].items():
-        lines.append(f"| {name} | {g['correct']} | {g['count']} | {g['accuracy']:.2%} |")
-    lines += [
-        "",
-        "Source: [TIGER-Lab/MMLU-Pro](https://huggingface.co/datasets/TIGER-Lab/MMLU-Pro) "
-        "([official evaluation](https://github.com/TIGER-AI-Lab/MMLU-Pro)). "
-        "The pinned revision, dataset hash, sampled row indices, prompt, and request settings "
-        "are recorded in metrics.json. Raw dataset text is not committed.",
-    ]
-    (output / "report.md").write_text("\n".join(lines) + "\n")
-    print(lines[2], flush=True)
 
 
 async def main(args):
@@ -161,20 +77,10 @@ async def main(args):
         "concurrency": args.concurrency,
     }
     args.output.mkdir(parents=True, exist_ok=True)
-    manifest_path = args.output / "manifest.json"
-    if manifest_path.exists():
-        previous = json.loads(manifest_path.read_text())
-        if any(previous.get(k) != v for k, v in manifest.items()):
-            raise ValueError("Different run parameters; choose a new output directory")
-        manifest = previous
-    else:
-        manifest["started_at"] = datetime.now(UTC).isoformat()
-        manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    manifest = save_manifest(args.output / "manifest.json", manifest)
     path = args.output / "predictions.jsonl"
-    rows = [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+    rows = load_predictions(path, indices)
     done = {r["index"] for r in rows}
-    if len(done) != len(rows) or not done.issubset(indices):
-        raise ValueError("Invalid saved predictions")
     queue = asyncio.Queue()
     for i in indices:
         if i not in done:
@@ -251,6 +157,8 @@ async def main(args):
             async with asyncio.TaskGroup() as group:
                 for _ in range(args.concurrency):
                     group.create_task(worker())
+    from report_mmlu_pro import summarize
+
     summarize(rows, manifest, args.report)
 
 
