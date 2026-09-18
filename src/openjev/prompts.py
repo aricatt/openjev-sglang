@@ -46,7 +46,7 @@ def state_messages(state: Content) -> list[dict[str, Any]]:
     return [{"role": "user", "content": serialize(state)}]
 
 
-def options(question: Question) -> list[tuple[str, str]]:
+def options(question: Question) -> list[tuple[str, str | None]]:
     if isinstance(question, NoulQuestion):
         return [("true", question.criteria.yes), ("false", question.criteria.no)]
     if isinstance(question, ChoiceQuestion):
@@ -121,10 +121,10 @@ class PromptCompiler:
             choices = options(question)
             labels = self.labels[: len(choices)]
             lines = [f"Question: {serialize(question.instructions)}", "", "Options:"]
-            for (_, description), (label, _) in zip(choices, labels, strict=True):
-                # User keys identify response fields only; they must not bias the model.
+            for (option, description), (label, _) in zip(choices, labels, strict=True):
+                # Keys are hidden unless a null description needs the name as its meaning.
                 # Indent multiline descriptions to keep each generated label distinct.
-                text = description.replace("\n", "\n   ")
+                text = (option if description is None else description).replace("\n", "\n   ")
                 lines.append(f"{label}: {text}")
             suffix = "\n".join(lines) + ending + "Answer:\n"
             # The prefix ends with two newlines and suffix starts with 'Question:'.

@@ -68,6 +68,24 @@ def test_option_keys_do_not_enter_prompt_or_change_tokens(compiler, payload):
     assert renamed.option_keys == ["other-key", "renamed"]
 
 
+def test_only_null_descriptions_fall_back_to_option_names(compiler, payload):
+    payload["questions"] = {
+        "q": {
+            "type": "choice",
+            "instructions": "Pick one",
+            "criteria": {
+                "Visible fallback": None,
+                "Hidden key": "Visible description",
+                "Also hidden": "",
+            },
+        }
+    }
+    branch = compiler.prepare(SystemOneRequest.model_validate(payload)).branches[0]
+    prompt = compiler.tokenizer.decode(branch.input_ids)
+    assert "A: Visible fallback\nB: Visible description\nC: " in prompt
+    assert "Hidden key" not in prompt and "Also hidden" not in prompt
+
+
 @pytest.mark.parametrize("content", [[{"type": "image_url", "image_url": "http://x"}], 12])
 def test_non_text_chat_is_rejected(content):
     with pytest.raises(ValueError):

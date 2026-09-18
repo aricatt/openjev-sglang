@@ -131,8 +131,9 @@ localhost and aren't forwarded publicly.
    `sum(level_index * probability)` with zero-based levels and a legend.
 
 Options are rendered as `A: description`, `B: description`, etc., without JSON
-wrappers or user-supplied option keys. Choice keys identify response fields only;
-each Choice option requires a nonempty description (`null` is rejected).
+wrappers. Choice keys identify response fields and are hidden from the model,
+except when a description is `null`: then the option key supplies its meaning,
+matching Jev's nullable description schema.
 
 This is a prefill plus first-token-readout workload: there is no generated chain
 of thought and no autoregressive continuation after the first token. There are

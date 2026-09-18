@@ -87,12 +87,12 @@ async def test_invalid_requests_do_not_hit_gpu(api, payload, change):
 
 
 @pytest.mark.parametrize("description", [None, ""])
-async def test_choice_requires_descriptions_before_gpu_work(api, payload, description):
+async def test_choice_accepts_nullable_descriptions(api, payload, description):
     client, calls, _ = api
     payload["questions"]["team"]["criteria"]["technical"] = description
     response = await client.post("/v1/systemone", json=payload)
-    assert response.status_code == 422
-    assert not calls
+    assert response.status_code == 200
+    assert response.json()["answers"]["team"]["probabilities"].keys() == {"billing", "technical"}
 
 
 async def test_token_limit_checked_before_prefill(api, payload):
