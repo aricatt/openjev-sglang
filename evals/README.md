@@ -61,15 +61,19 @@ contents are never written to the results.
   [PNG](results/boolq-2026-09-18/comparison/reliability.png) and
   [PDF](results/boolq-2026-09-18/comparison/reliability.pdf) calibration curves.
 - [Jev: 1,000 random MMLU-Pro questions](results/mmlu-pro-2026-09-18/report.md).
+- [OpenJev: the same MMLU-Pro questions](results/mmlu-pro-2026-09-18/openjev/report.md).
 
 ## MMLU-Pro subset
 
 ```sh
 uv run evals/mmlu_pro.py --count 1000 --seed 42 --concurrency 16
+uv run evals/mmlu_pro.py --provider openjev --count 1000 --seed 42 --concurrency 16
 ```
 
 This standalone script samples test questions uniformly without replacement and
-uses Jev's `choice` endpoint with zero-shot direct answers. It reports exact-match
+uses Jev's or OpenJev's `choice` endpoint with zero-shot direct answers. Each
+provider gets its own output directory; OpenJev waits for server readiness and
+never reads or sends the OpenRouter key. It reports exact-match
 accuracy, an approximate Wilson interval, and subject breakdowns. It is not a
 reproduction of the usual five-shot chain-of-thought benchmark protocol. The
 manifest records the pinned dataset revision, byte hash and all sampled indices.
