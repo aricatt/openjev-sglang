@@ -9,6 +9,7 @@ import time
 from contextlib import asynccontextmanager
 
 from .config import Settings
+from .launch import watch_process
 from .profiles import PROFILES
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,7 @@ def backend_command(
 @asynccontextmanager
 async def backend_process(settings: Settings, enabled: bool, extra: list[str]):
     process = None
+    stopping = None
     if enabled:
         # Rust's Hub lookup can miss a revision-pinned HF cache snapshot. Resolve
         # assets before GPU startup and pass a real directory to both frontends.
@@ -69,9 +71,12 @@ async def backend_process(settings: Settings, enabled: bool, extra: list[str]):
         process = subprocess.Popen(
             backend_command(settings, extra, tokenizer_path), env=env, start_new_session=True
         )
+        stopping = watch_process(process, "SGLang")
     try:
         yield process
     finally:
+        if stopping is not None:
+            stopping.set()
         if process is not None:
             await asyncio.to_thread(stop_process, process)
 

@@ -30,6 +30,9 @@ The deployment prints a `https://...us-west.modal.direct` URL. It uses a
 `routing_region="us-west"`, and `compute_region=["us-west", "us-central", "us"]`.
 Autoscaling has no explicit container cap and scales to zero after five idle minutes.
 Set `min_containers=1` in `modal_app.py` to keep a B200 warm.
+If SGLang exits unexpectedly, the API exits too. The Modal launcher watches the
+API and exits the container so Modal can replace it, rather than leaving a live
+HTTP process with a dead inference backend. Normal shutdown disarms both watchers.
 
 The first build imports a large SGLang image. The first GPU start also downloads
 weights and compiles/captures kernels. Model weights persist in the
