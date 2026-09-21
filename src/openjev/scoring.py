@@ -17,6 +17,8 @@ def normalize(logprobs: list[float], temperature: float = 1.0) -> list[float]:
 
 def confidence(probabilities: list[float]) -> float:
     """Normalized negative entropy; TypeSafe's exact statistic is not published."""
+    if len(probabilities) <= 1:
+        return 1.0
     entropy = -math.fsum(p * math.log(p) for p in probabilities if p > 0)
     return min(1.0, max(0.0, 1 - entropy / math.log(len(probabilities))))
 

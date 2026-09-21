@@ -36,7 +36,12 @@ class SGLangClient:
         except httpx.HTTPError:
             return False
 
-    async def generate(self, input_ids: list[int], label_ids: list[int] | None = None):
+    async def generate(
+        self,
+        input_ids: list[int],
+        label_ids: list[int] | None = None,
+        lora_path: str | None = None,
+    ):
         rid = f"openjev-{uuid4().hex}"
         payload: dict[str, Any] = {
             "rid": rid,
@@ -58,6 +63,8 @@ class SGLangClient:
             "top_logprobs_num": 0,
             "return_text_in_logprobs": False,
         }
+        if lora_path is not None:
+            payload["lora_path"] = lora_path
         async with self.slots:
             try:
                 response = await self.client.post(

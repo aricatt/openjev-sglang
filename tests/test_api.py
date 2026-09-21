@@ -52,7 +52,7 @@ async def test_pinned_jev_model_names_are_accepted_as_aliases(api, payload, mode
     assert response.json()["model"] == model
 
 
-@pytest.mark.parametrize("count,status", [(1, 422), (2, 200), (64, 200), (65, 422)])
+@pytest.mark.parametrize("count,status", [(1, 200), (2, 200), (256, 200), (257, 422)])
 async def test_answer_limits(api, count, status):
     client, calls, _ = api
     response = await client.post(
@@ -74,6 +74,17 @@ async def test_answer_limits(api, count, status):
         assert not calls
     else:
         assert len(response.json()["answers"]["q"]["probabilities"]) == count
+
+
+async def test_lora_path_reaches_warmup_and_branches(api, payload):
+    client, calls, _ = api
+    response = await client.post("/v1/systemone", json={**payload, "lora_path": "alpha"})
+    assert response.status_code == 200
+    assert calls and all(call["lora_path"] == "alpha" for call in calls)
+    calls.clear()
+    response = await client.post("/v1/systemone", json=payload)
+    assert response.status_code == 200
+    assert calls and all("lora_path" not in call for call in calls)
 
 
 @pytest.mark.parametrize(
@@ -164,7 +175,7 @@ async def test_models_and_limits(api):
     assert data["models"][0]["name"] == "jev-latest"
     assert data["data"][0]["id"] == "jev-latest"
     limits = (await client.get("/v1/limits")).json()
-    assert limits["max_answers_per_question"] == 64
+    assert limits["max_answers_per_question"] == 256
 
 
 async def test_root_scalar_ui_and_example(api):
@@ -185,8 +196,8 @@ async def test_missing_backend_cache_counts_are_not_reported_as_zero(api, payloa
     client, _, service = api
     generate = service.backend.generate
 
-    async def without_cache_counts(*args):
-        return replace(await generate(*args), cached_tokens=None)
+    async def without_cache_counts(*args, **kwargs):
+        return replace(await generate(*args, **kwargs), cached_tokens=None)
 
     monkeypatch.setattr(service.backend, "generate", without_cache_counts)
     response = await client.post("/v1/systemone", json=payload)

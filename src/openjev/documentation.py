@@ -26,10 +26,10 @@ SYSTEMONE_DESCRIPTION = """Evaluate **1–64 independent questions** against one
 - **Noul** (`noul`): ask a yes/no question. The answer's `noul` value is the
   probability of `true`, from 0 to 1. Optionally define what `true` and `false`
   mean using `criteria`.
-- **Choice** (`choice`): supply 2–64 named options in `criteria`. The response
+- **Choice** (`choice`): supply 1–256 named options in `criteria`. The response
   contains the winning key and a probability for every option; probabilities sum to 1.
   The model sees the description, or the option name only when its description is null.
-- **Score** (`score`): supply 2–64 rubric descriptions in ascending order.
+- **Score** (`score`): supply 2–256 rubric descriptions in ascending order.
   The score is the probability-weighted **zero-based index**, so three levels
   yield a score between 0 and 2. `legend` maps each index to its description.
 

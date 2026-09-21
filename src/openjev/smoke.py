@@ -84,12 +84,12 @@ async def smoke_test(url: str, timeout: float = 1200) -> dict:
                     "too_many": {
                         "type": "choice",
                         "instructions": "pick",
-                        "criteria": {str(i): f"Option {i}" for i in range(65)},
+                        "criteria": {str(i): f"Option {i}" for i in range(257)},
                     }
                 },
             },
         )
-        assert bad.status_code == 422, "65 options must be rejected"
+        assert bad.status_code == 422, "257 options must be rejected"
         return {
             "url": url,
             "ready_wait_seconds": round(ready_wait_seconds, 2),

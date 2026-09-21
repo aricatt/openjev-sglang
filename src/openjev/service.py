@@ -69,10 +69,14 @@ class EvaluationService:
         # Barrier: cache the common prefix completely before submitting any branch.
         # The warm-up token is discarded; it is never appended to the branches.
         prepared_at = time.perf_counter()
-        warmup = await self.backend.generate(prepared.prefix_ids)
+        warmup = await self.backend.generate(prepared.prefix_ids, lora_path=request.lora_path)
         warmed_at = time.perf_counter()
         tasks = [
-            asyncio.create_task(self.backend.generate(branch.input_ids, branch.label_ids))
+            asyncio.create_task(
+                self.backend.generate(
+                    branch.input_ids, branch.label_ids, lora_path=request.lora_path
+                )
+            )
             for branch in prepared.branches
         ]
         try:

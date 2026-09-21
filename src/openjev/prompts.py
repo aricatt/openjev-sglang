@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import orjson
 from jinja2 import TemplateError
+from pydantic import JsonValue
 
 from .config import MAX_ANSWERS
 from .models import ChoiceQuestion, Content, NoulQuestion, Question, SystemOneRequest
@@ -15,7 +16,7 @@ from .models import ChoiceQuestion, Content, NoulQuestion, Question, SystemOneRe
 DEFAULT_INSTRUCTIONS = "Answer using the options below."
 
 
-def serialize(value: Content) -> str:
+def serialize(value: Content | JsonValue) -> str:
     return value if isinstance(value, str) else orjson.dumps(value).decode()
 
 
@@ -52,7 +53,10 @@ def options(question: Question) -> list[tuple[str, str | None]]:
     if isinstance(question, NoulQuestion):
         return [("true", question.criteria.yes), ("false", question.criteria.no)]
     if isinstance(question, ChoiceQuestion):
-        return list(question.criteria.items())
+        return [
+            (key, value if value is None or isinstance(value, str) else serialize(value))
+            for key, value in question.criteria.items()
+        ]
     return [(str(index), description) for index, description in enumerate(question.criteria)]
 
 

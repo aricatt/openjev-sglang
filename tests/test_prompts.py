@@ -2,6 +2,7 @@ import copy
 
 import pytest
 
+from openjev.defaults import MAX_ANSWERS
 from openjev.models import SystemOneRequest
 from openjev.prompts import DEFAULT_INSTRUCTIONS, state_messages
 
@@ -93,6 +94,23 @@ def test_missing_instructions_falls_back_to_default(compiler, payload):
     assert f"Question: {DEFAULT_INSTRUCTIONS}" in prompt
 
 
+def test_structured_criteria_descriptions_are_serialized(compiler, payload):
+    payload["questions"] = {
+        "target": {
+            "type": "choice",
+            "instructions": "Pick one",
+            "criteria": {
+                "1": {"element": "[1] Continue", "role": "button"},
+                "2": {"element": "[2] Cancel", "role": "button"},
+            },
+        }
+    }
+    branch = compiler.prepare(SystemOneRequest.model_validate(payload)).branches[0]
+    prompt = compiler.tokenizer.decode(branch.input_ids)
+    assert 'A: {"element":"[1] Continue","role":"button"}' in prompt
+    assert branch.option_keys == ["1", "2"]
+
+
 @pytest.mark.parametrize("content", [[{"type": "image_url", "image_url": "http://x"}], 12])
 def test_non_text_chat_is_rejected(content):
     with pytest.raises(ValueError):
@@ -100,7 +118,7 @@ def test_non_text_chat_is_rejected(content):
 
 
 def test_all_answer_labels_are_distinct_single_tokens(compiler):
-    assert len(compiler.labels) == 64
-    assert len({token_id for _, token_id in compiler.labels}) == 64
+    assert len(compiler.labels) == MAX_ANSWERS
+    assert len({token_id for _, token_id in compiler.labels}) == MAX_ANSWERS
     for text, token_id in compiler.labels:
         assert compiler.tokenizer.encode(text) == [token_id]
