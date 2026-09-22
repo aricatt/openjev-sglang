@@ -41,6 +41,7 @@ class SGLangClient:
         input_ids: list[int],
         label_ids: list[int] | None = None,
         lora_path: str | None = None,
+        image_data: tuple[str, ...] | list[str] = (),
     ):
         rid = f"openjev-{uuid4().hex}"
         payload: dict[str, Any] = {
@@ -65,6 +66,8 @@ class SGLangClient:
         }
         if lora_path is not None:
             payload["lora_path"] = lora_path
+        if image_data:
+            payload["image_data"] = list(image_data)
         async with self.slots:
             try:
                 response = await self.client.post(

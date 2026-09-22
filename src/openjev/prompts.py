@@ -38,15 +38,41 @@ def state_messages(state: Content) -> list[dict[str, Any]]:
             if isinstance(content, list):
                 if not all(
                     isinstance(part, dict)
-                    and part.get("type") == "text"
-                    and isinstance(part.get("text"), str)
+                    and (
+                        (part.get("type") == "text" and isinstance(part.get("text"), str))
+                        or (part.get("type") == "image_url" and _image_url(part))
+                    )
                     for part in content
                 ):
-                    raise ValueError("Jev state supports text content only")
+                    raise ValueError("Chat content parts must be text or image_url")
             elif content is not None and not isinstance(content, str):
-                raise ValueError("Chat content must be text, text parts, or null")
+                raise ValueError("Chat content must be text, text/image parts, or null")
         return candidate
+    if isinstance(state, dict) and isinstance(state.get("images"), list):
+        images = [_image_part(url) for url in state["images"] if isinstance(url, str)]
+        rest = {key: value for key, value in state.items() if key != "images"}
+        return [{"role": "user", "content": [*images, {"type": "text", "text": serialize(rest)}]}]
     return [{"role": "user", "content": serialize(state)}]
+
+
+def _image_url(part: dict[str, Any]) -> str | None:
+    url = part.get("image_url")
+    if isinstance(url, dict):
+        url = url.get("url")
+    return url if isinstance(url, str) else None
+
+
+def _image_part(url: str) -> dict[str, Any]:
+    return {"type": "image_url", "image_url": {"url": url}}
+
+
+def collect_images(messages: list[dict[str, Any]]) -> list[str]:
+    urls = []
+    for item in messages:
+        content = item.get("content")
+        if isinstance(content, list):
+            urls.extend(url for part in content if (url := _image_url(part)))
+    return urls
 
 
 def options(question: Question) -> list[tuple[str, str | None]]:
@@ -73,6 +99,7 @@ class Branch:
 class PreparedRequest:
     prefix_ids: list[int]
     branches: list[Branch]
+    images: tuple[str, ...] = ()
 
 
 class PromptCompiler:
@@ -99,6 +126,7 @@ class PromptCompiler:
     def prepare(self, request: SystemOneRequest) -> PreparedRequest:
         marker = f"OPENJEV_QUESTION_{uuid4().hex}"
         messages = state_messages(request.state)
+        images = collect_images(messages)
         messages = [
             *messages,
             {
@@ -150,4 +178,4 @@ class PromptCompiler:
                     option_keys=[key for key, _ in choices],
                 )
             )
-        return PreparedRequest(prefix_ids=prefix_ids, branches=branches)
+        return PreparedRequest(prefix_ids=prefix_ids, branches=branches, images=tuple(images))

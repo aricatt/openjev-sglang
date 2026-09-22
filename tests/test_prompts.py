@@ -111,10 +111,21 @@ def test_structured_criteria_descriptions_are_serialized(compiler, payload):
     assert branch.option_keys == ["1", "2"]
 
 
-@pytest.mark.parametrize("content", [[{"type": "image_url", "image_url": "http://x"}], 12])
+@pytest.mark.parametrize(
+    "content", [[{"type": "image_url", "image_url": {"url": 12}}], [{"type": "video"}], 12]
+)
 def test_non_text_chat_is_rejected(content):
     with pytest.raises(ValueError):
         state_messages([{"role": "user", "content": content}])
+
+
+def test_images_are_collected_from_state(compiler, payload):
+    payload["state"] = {
+        "page": {"url": "http://x"},
+        "images": ["data:image/png;base64,AAAA", "http://y/img.png"],
+    }
+    prepared = compiler.prepare(SystemOneRequest.model_validate(payload))
+    assert prepared.images == ("data:image/png;base64,AAAA", "http://y/img.png")
 
 
 def test_all_answer_labels_are_distinct_single_tokens(compiler):
